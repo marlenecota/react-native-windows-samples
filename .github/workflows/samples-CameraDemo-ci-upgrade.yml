@@ -16,11 +16,14 @@ jobs:
     strategy:
       matrix:
         sample: [CameraDemo]
-        architecture: [ARM] # Can't build ARM64 until https://github.com/react-native-community/react-native-camera/issues/2944
+        architecture: [ARM, ARM64]
         configuration: [Debug, Release]
-        reactNativeWindowsVersion: ['latest'] # Add 'preview' here when a new preview is available
+        reactNativeWindowsVersion: [latest, preview, canary]
     steps:
       - uses: actions/checkout@v2
+
+      - name: Gather environment info
+        run: npx envinfo
 
       - name: Relocate to reduce long paths
         run:  Copy-item -Force -Recurse -Verbose "samples\${{ matrix.sample }}" -Destination "..\..\src"
@@ -30,20 +33,23 @@ jobs:
         working-directory: ..\..\src
 
       - name: Upgrade react-native-windows
-        run: ${{github.workspace}}\.github\scripts\UpgradeSmokeTest.ps1 ${{ matrix.reactNativeWindowsVersion }}
+        id: upgrade
+        continue-on-error: true
+        run: ${{github.workspace}}\.github\scripts\UpgradeSmokeTest.ps1 ${{ matrix.reactNativeWindowsVersion }} -Force ${{ format('${0}', contains(matrix.reactNativeWindowsVersion, 'canary')) }}
         working-directory: ..\..\src
 
       - name: Run react-native-windows-init
+        if: ${{ steps.upgrade.outcome == 'success' }}
         run: npx react-native-windows-init --overwrite --version ${{ matrix.reactNativeWindowsVersion }}
         working-directory: ..\..\src
 
       - name: Build ${{ matrix.architecture }} Debug
-        if: ${{ matrix.configuration == 'Debug' }}
+        if: ${{ steps.upgrade.outcome == 'success' && matrix.configuration == 'Debug' }}
         run: npx react-native run-windows --no-deploy --no-launch --no-packager --logging --arch ${{ matrix.architecture }}
         working-directory: ..\..\src
 
       - name: Build ${{ matrix.architecture }} Release
-        if: ${{ matrix.configuration == 'Release' }}
+        if: ${{ steps.upgrade.outcome == 'success' && matrix.configuration == 'Release' }}
         run: npx react-native run-windows --no-deploy --no-launch --no-packager --logging --release --arch ${{ matrix.architecture }}
         working-directory: ..\..\src
   build_and_deploy:
@@ -54,9 +60,12 @@ jobs:
         sample: [CameraDemo]
         architecture: [x86, x64]
         configuration: [Debug, Release]
-        reactNativeWindowsVersion: ['latest'] # Add 'preview' here when a new preview is available
+        reactNativeWindowsVersion: [latest, preview, canary]
     steps:
       - uses: actions/checkout@v2
+
+      - name: Gather environment info
+        run: npx envinfo
 
       - name: Relocate to reduce long paths
         run:  Copy-item -Force -Recurse -Verbose "samples\${{ matrix.sample }}" -Destination "..\..\src"
@@ -66,19 +75,22 @@ jobs:
         working-directory: ..\..\src
 
       - name: Upgrade react-native-windows
-        run: ${{github.workspace}}\.github\scripts\UpgradeSmokeTest.ps1 ${{ matrix.reactNativeWindowsVersion }}
+        id: upgrade
+        continue-on-error: true
+        run: ${{github.workspace}}\.github\scripts\UpgradeSmokeTest.ps1 ${{ matrix.reactNativeWindowsVersion }} -Force ${{ format('${0}', contains(matrix.reactNativeWindowsVersion, 'canary')) }}
         working-directory: ..\..\src
 
       - name: Run react-native-windows-init
+        if: ${{ steps.upgrade.outcome == 'success' }}
         run: npx react-native-windows-init --overwrite --version ${{ matrix.reactNativeWindowsVersion }}
         working-directory: ..\..\src
 
       - name: Build ${{ matrix.architecture }} Debug
-        if: ${{ matrix.configuration == 'Debug' }}
+        if: ${{ steps.upgrade.outcome == 'success' && matrix.configuration == 'Debug' }}
         run: npx react-native run-windows --no-launch --no-packager --logging --arch ${{ matrix.architecture }}
         working-directory: ..\..\src
 
       - name: Build ${{ matrix.architecture }} Release
-        if: ${{ matrix.configuration == 'Release' }}
+        if: ${{ steps.upgrade.outcome == 'success' && matrix.configuration == 'Release' }}
         run: npx react-native run-windows --no-launch --no-packager --logging --release --arch ${{ matrix.architecture }}
         working-directory: ..\..\src

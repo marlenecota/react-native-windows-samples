@@ -22,11 +22,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Gather environment info
+        run: npx envinfo
+
       - name: Relocate to reduce long paths
         run:  Copy-item -Force -Recurse -Verbose "samples\${{ matrix.sample }}" -Destination "..\..\src"
 
       - name: Yarn install
-        run: yarn install
+        run: yarn install --frozen-lockfile
         working-directory: ..\..\src
 
       - name: Build ${{ matrix.architecture }} Debug
@@ -36,6 +39,6 @@ jobs:
 
       - name: Build ${{ matrix.architecture }} Release
         if: ${{ matrix.configuration == 'Release' }}
-        run: npx react-native run-windows --no-deploy --no-launch --no-packager--no-autolink  --logging --release --arch ${{ matrix.architecture }}
+        run: npx react-native run-windows --no-deploy --no-launch --no-packager --no-autolink --logging --release --arch ${{ matrix.architecture }}
         working-directory: ..\..\src
   
